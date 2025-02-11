@@ -6,6 +6,7 @@ from django.db.models import UniqueConstraint
 from user.models import UserAccount
 from user.serializers import UserSerializer
 from .utils import create_order_log, create_order_report
+from decimal import Decimal
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -37,7 +38,7 @@ class ProductGetSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Product
-        fields = ['id', 'name', 'category_name', 'description', 'buying_price', 'selling_price', 'stock', 'supplier_name', 'image', 'user']
+        fields = ['id', 'name', 'category_name', 'description', 'buying_price', 'selling_price', 'receipt', 'stock', 'supplier_name', 'image', 'user']
         constraints = [
             UniqueConstraint(fields=['name', 'category_name'], name='unique_product_category')
         ]
@@ -89,7 +90,7 @@ class OrderItemSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = OrderItem
-        fields = ['id', 'order', 'product', 'product_price', 'quantity', 'price']
+        fields = ['id', 'order', 'product', 'product_price', 'receipt', 'quantity', 'price']
         extra_kwargs = {
             'order': {'required': False},  # Make 'order' optional in the request
             'price': {'read_only': True}, # Make 'price' read-only if calculated
@@ -163,12 +164,19 @@ class OrderSerializer(serializers.ModelSerializer):
 
             # Create each OrderItem
             for item_data in items_data:
-                # The total price 
-                total_price = item_data.get('product').selling_price * item_data['quantity']
                 # This will call OrderItemSerializer.validate() for each item
                 product = item_data['product']
                 quantity = item_data['quantity']
-                # product_price = item_data['product'].selling_price
+                vat = 0.15
+                vat = Decimal(str(vat))
+
+                if item_data.get('product').receipt == True:
+                    # The total price with VAT
+                    total_price = item_data.get('product').selling_price * item_data['quantity'] + (item_data.get('product').selling_price * item_data['quantity'] *  vat)
+                else:
+                    # The total price without VAT
+                    total_price = item_data.get('product').selling_price * item_data['quantity']
+                
                 if quantity <= 0:
                     raise ValidationError("Quantity must be greater than zero.")
                 
@@ -177,10 +185,10 @@ class OrderSerializer(serializers.ModelSerializer):
                     product.stock -= quantity  # Reduce stock by the order quantity
                     product.save()
                 else:
-                    raise ValidationError(f"Insufficient stock for {product.name}. Available stock is {product.stock}, but {instance.quantity} was requested.")
+                    raise ValidationError(f"Insufficient stock for {product.name}. Available stock is {product.stock}, but {quantity} was requested.")
 
                 # Create the OrderItem and associate with the Order
-                OrderItem.objects.create(order=order, **item_data)
+                OrderItem.objects.create(order=order, price=total_price, **item_data)
                 # Adding it into the log with every itration
                 create_order_log(
                     user = user.name,
@@ -218,7 +226,8 @@ class OrderSerializer(serializers.ModelSerializer):
                         quantity = item_data['quantity'],
                         price = total_price
                     )
-
+            order.total_amount = order.get_total_price()
+            order.save()
             return order
     
     

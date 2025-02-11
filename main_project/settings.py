@@ -108,15 +108,15 @@ CSRF_COOKIE_NAME = 'csrftoken'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME':'semu',
+        'NAME':'tokiyo',
         'USER':'root',
         'PASSWORD':'Leul1992',
         'HOST':'localhost',
         'PORT':'3306',
     },
-    'semu': {
+    'tokiyo': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME':'semu',
+        'NAME':'tokiyo',
         'USER':'root',
         'PASSWORD':'Leul1992',
         'HOST':'localhost',

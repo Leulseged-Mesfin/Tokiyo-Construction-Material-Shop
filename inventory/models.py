@@ -48,6 +48,7 @@ class Product(models.Model):
     category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, blank=True)
     description = models.TextField(null=True, blank=True)
     buying_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    receipt = models.BooleanField(default=False)
     selling_price = models.DecimalField(max_digits=10, decimal_places=2)
     stock = models.PositiveIntegerField()
     supplier = models.ForeignKey(Supplier, on_delete=models.SET_NULL, null=True, blank=True)
@@ -107,7 +108,7 @@ class Order(models.Model):
 
     def get_total_price(self):
         """Calculate the total price of the entire order."""
-        return sum(item.quantity * item.product.selling_price for item in self.items.all())
+        return sum(item.get_price() for item in self.items.all())
 
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, related_name='items', on_delete=models.CASCADE)
@@ -116,13 +117,21 @@ class OrderItem(models.Model):
     quantity = models.IntegerField()
     price = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     cost = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, null=True, blank=True)
+    receipt = models.BooleanField(default=False)
+
+    def save(self, *args, **kwargs):
+        """Automatically set receipt to True if the product's receipt is True"""
+        if self.product and self.product.receipt:
+            self.receipt = True
+        super().save(*args, **kwargs)
 
     def str(self):
         return self.product
     
     def get_price(self):
         """Calculate the total price of this item."""
-        return self.product.selling_price * self.quantity
+        # return self.product.selling_price * self.quantity
+        return self.price  # Now it returns the stored price
     
     def get_cost(self):
         """Calculate the total price of this item."""
