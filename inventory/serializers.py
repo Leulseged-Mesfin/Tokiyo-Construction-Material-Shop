@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Product, Supplier, Order, OrderItem, CustomerInfo,  Category, CompanyInfo, OrderLog, Report, ExpenseTypes, OtherExpenses
+from .models import Product, Supplier, Order, OrderItem, CustomerInfo,  Category, CompanyInfo, OrderLog, Report, ExpenseTypes, OtherExpenses, Performa, PurchaseExpense, PurchaseProduct
 from django.db import transaction
 from django.core.exceptions import ValidationError
 from django.db.models import UniqueConstraint
@@ -308,7 +308,6 @@ class OtherExpensesSerializer(serializers.ModelSerializer):
             validated_data['user'] = user.name
         return super().create(validated_data)
 
-
 class OtherExpensesGetSerializer(serializers.ModelSerializer):
     expense_type = serializers.CharField(source='expense_type.name', read_only=True)
 
@@ -328,3 +327,31 @@ class ProductGetReportSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
         fields = ['id', 'name', 'category_name', 'description', 'buying_price', 'selling_price', 'stock', 'supplier_name', 'user']
+
+class PurchaseProductSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PurchaseProduct
+        fields = '__all__'
+
+class PurchaseExpenseSerializer(serializers.ModelSerializer):
+    products = PurchaseProductSerializer(many=True)
+
+    class Meta:
+        model = PurchaseExpense
+        fields = '__all__'
+
+    def create(self, validated_data, user=None):
+        # Add the user to the validated_data if provided
+        if user:
+            validated_data['user'] = user.name
+        
+        products_data = validated_data.pop('products', [])
+        
+        # Create and explicitly save the PurchaseExpense instance
+        purchase_expense = PurchaseExpense.objects.create(**validated_data)
+
+        # Create and associate PurchaseProduct instances individually
+        for product_data in products_data:
+            PurchaseProduct.objects.create(expense=purchase_expense, **product_data)
+
+        return purchase_expense

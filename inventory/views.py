@@ -3,7 +3,7 @@ from django.db.models import Sum, Count
 from rest_framework.response import Response
 from rest_framework import status, permissions
 from django.db.models import F, Sum, ExpressionWrapper, DecimalField
-from .models import Product, Supplier, Order, OrderItem, Category, CustomerInfo, CompanyInfo, OrderLog, Report, ExpenseTypes, OtherExpenses
+from .models import Product, Supplier, Order, OrderItem, Category, CustomerInfo, CompanyInfo, OrderLog, Report, ExpenseTypes, OtherExpenses, PurchaseExpense, PurchaseProduct
 from .serializers import (
     ProductPostSerializer, 
     ProductGetSerializer, 
@@ -20,7 +20,9 @@ from .serializers import (
     OrderReportSerializer,
     ExpenseTypesSerializer,
     OtherExpensesSerializer,
-    OtherExpensesGetSerializer
+    OtherExpensesGetSerializer,
+    PurchaseProductSerializer,
+    PurchaseExpenseSerializer
 
 )
 import logging
@@ -1630,3 +1632,56 @@ class ProductExcelReportAPIView(APIView):
                 {"error": f"An error occurred while Retriving the Product Report.  {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+
+class ProductsPerSupplierAPIView(APIView):
+    def get(self, request, pk):
+        try:
+            user = request.user
+            if not (user.role == 'Manager' or user.is_superuser == True or user.role == 'Salesman'):
+                return Response(
+                    {"error": "You are not authorized to Retrive products for this supplier."},
+                    status=status.HTTP_403_FORBIDDEN
+                ) 
+            """Retrieve all products belonging to a specific supplier."""
+            products = Product.objects.filter(supplier_id=pk)
+            if not products.exists():
+                return Response({"message": "No products found for this supplier"}, status=status.HTTP_404_NOT_FOUND)
+            
+            serializer = ProductGetSerializer(products, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response(
+                {"error": f"An error occurred while retrieving products for this supplier: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+ 
+
+class PurchaseProductListCreate(APIView):
+    def get(self, request):
+        products = PurchaseProduct.objects.all()
+        serializer = PurchaseProductSerializer(products, many=True)
+        return Response(serializer.data)
+
+    def post(self, request):
+        serializer = PurchaseProductSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save(user=request.user)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class PurchaseExpenseListCreate(APIView):
+    def get(self, request):
+        expenses = PurchaseExpense.objects.all()
+        serializer = PurchaseExpenseSerializer(expenses, many=True)
+        return Response(serializer.data)
+
+    def post(self, request):
+        serializer = PurchaseExpenseSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save(user=request.user)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+

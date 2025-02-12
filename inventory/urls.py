@@ -36,7 +36,12 @@ from .views import (
     OtherExpensesRetrieveUpdateDeleteAPIView,
 
     RetriveTotalProductCostAPIView,
-    ProductExcelReportAPIView
+    ProductExcelReportAPIView,
+
+    ProductsPerSupplierAPIView,
+
+    PurchaseProductListCreate, 
+    PurchaseExpenseListCreate
   
 )
 
@@ -76,4 +81,11 @@ urlpatterns = [
     path('other_expenses/<pk>', OtherExpensesRetrieveUpdateDeleteAPIView.as_view(), name='other_expenses-retrieve'),
     path('product_report/', ProductExcelReportAPIView.as_view(), name='product-report-retrieve'),
     path('product_cost/', RetriveTotalProductCostAPIView.as_view(), name='total-product-cost-retrieve'),
+
+    path('products_supplier/<pk>', ProductsPerSupplierAPIView.as_view(), name='products-per-supplier'),
+
+    path('purchase-products/', PurchaseProductListCreate.as_view(), name='purchase-product-list-create'),
+    path('purchase-products/<pk>', PurchaseProductListCreate.as_view(), name='purchase-product-list-create'),
+    path('purchase-expenses/', PurchaseExpenseListCreate.as_view(), name='purchase-expense-list-create'),
+    path('purchase-expenses/<pk>/', PurchaseExpenseListCreate.as_view(), name='purchase-expense-list-create'),
 ]
